@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8">
+        <title>Black-Body Color Demo</title>
+    </head>
+    <body>
+        <label for="temperature">Temperature (K)</label>
+        <input type="range" id="temperature" min="1000" max="10000" />
+
+        <div id="color">
+            Temperature: ?
+            <br>
+            RGB: ?, ?, ?
+        </div>
+    </body>
+
+    <script>
+        function tempToRgb(temp) {
+            var r = -2.20056e-7 * temp + 1.000854525;
+            var g =  4.19689e-5 * temp + 0.657922994;
+            var b =  1.20922e-4 * temp - 0.115476773;
+            return [r,g,b];
+        }
+
+        function inputListener(e) {
+            var colorBox = document.getElementById("color");
+            var temp = e.target.value;
+            var rgb = tempToRgb(temp);
+            colorBox.innerText = `Temperature: ${temp}\nRGB: ${rgb}`;
+            for (var i = 0; i < rgb.length; i++) rgb[i] = 255.0 * rgb[i];
+            document.body.style.backgroundColor = `rgb(${rgb})`;
+        }
+
+        document
+            .getElementById("temperature")
+            .addEventListener("input", inputListener);
+    </script>
+</html>
