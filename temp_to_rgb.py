@@ -23,6 +23,38 @@ def planck(wavelength, temperature):
     return numerator / denominator
 
 
+# Compute the temperature of a incandescent lamp's filament, given a voltage
+# (in Volts).  The empirical method used here is due to Martin Kykta.
+# Note that this relation only holds if the voltage is not near zero.
+# See https://pubs.aip.org/aip/adv/article/12/10/105116/2819829/Incandescent-lamp-design-and-lifetime
+# for more information.
+def voltage_to_temp(voltage):
+    if voltage < 0:
+        voltage *= -1
+
+    # Stefan-Boltzmann Constant (from
+    # https://en.wikipedia.org/wiki/Stefan%E2%80%93Boltzmann_law)
+    # In W m^-2 K^-4
+    stef_boltz = 5.670_374_419e-8
+    # Emissivity of tungsten (from Kykta, 2022)
+    emissivity = 0.28
+    # In meters
+    filament_length = 0.02814
+    # In meters
+    filament_radius = 11.5533e-6
+
+    a_1 = math.pow(2.0 * stef_boltz * emissivity * math.pow(2.96e8, 4), -0.25)
+    a_1 /= math.pi
+
+    a_2 = math.pow(2.0 * math.pi * stef_boltz * emissivity * a_1, -0.25)
+
+    B_2 = a_2 * math.pow(filament_length, -0.384) * math.pow(filament_radius, 0.192)
+
+    temperature = B_2 * math.pow(voltage, 0.384)
+
+    return temperature
+
+
 # Use Composite Simpson's Rule to integrate over the points
 # `values` is a list of 'y-values' and will be shortened if not of even length
 # `subint_size` is the difference between the 'x-values' of the points. It is
@@ -95,25 +127,36 @@ def get_rgb_from_temp(temperature, data):
     return rgb_normalized
 
 
-if __name__ == '__main__':
+def main():
     input_file_name = 'CIE_xyz_1964_10deg.csv'
-    #min_temp =  1_000
-    #max_temp = 10_000
-    #temp_step =   100
-    try:
-        min_temp =  float(input('Minimum temperature (K): '))
-        max_temp =  float(input('Maximum temperature (K): '))
-        temp_step = float(input('Step size (K): '))
 
-        assert(min_temp > 0)
-        assert(max_temp > 0)
-        assert(temp_step > 0)
-        assert(max_temp > min_temp)
+    try:
+        selection = input('Mode ((T)emperature/(V)oltage: ').lower()
+        voltage_mode = False
+        if selection[0] == 't':
+            voltage_mode = False
+        elif selection[0] == 'v':
+            voltage_mode = True
+        else:
+            assert(False)
+    except:
+        print('\nPlease answer with "T" or "V".\n')
+        return
+
+    try:
+        value_text = 'voltage (V)' if voltage_mode else 'temperature (K)'
+        min_value =  float(input(f'Minimum {value_text}: '))
+        max_value =  float(input(f'Maximum {value_text}: '))
+        step_size = float(input('Step size: '))
+
+        assert(min_value > 0)
+        assert(max_value > 0)
+        assert(step_size > 0)
+        assert(max_value > min_value)
     except:
         print("\nPlease provide decimal numbers with reasonable values,")
-        print("i.e. positive temperatures and a minimum that is less than the")
-        print("maximum.\n")
-        assert(False)
+        print("i.e. positive and a minimum that is less than the maximum.\n")
+        return
 
     # Start reading the file
     in_f = open(input_file_name, 'r')
@@ -143,25 +186,49 @@ if __name__ == '__main__':
     in_f.close()
 
     # Get Temperature-RGB relationship
+    voltages = []
     temp_rgb = []
-    temp = min_temp
-    while temp <= max_temp:
+    cur_value = min_value
+    while cur_value <= max_value:
+        # Calculate the temperature if necessary
+        temp = voltage_to_temp(cur_value) if voltage_mode else cur_value
+
         rgb = get_rgb_from_temp(temp, data)
         temp_rgb.append([temp, rgb])
-        temp += temp_step
+
+        # Record the voltage if necessary
+        if voltage_mode:
+            voltages.append(cur_value)
+
+        cur_value += step_size
 
     # Write to file
     output_file_name = input('Output file name: ')
     output_file_name += ".csv"
     with open(output_file_name, 'w') as out_f:
+        header = []
+        if voltage_mode:
+            header.append('Voltage (V)')
+        header.extend(['Temperature (K)', 'Red', 'Green', 'Blue'])
+
         writer = csv.writer(out_f)
-        writer.writerow(['Temperature (K)', 'Red', 'Green', 'Blue'])
-        for row in temp_rgb:
+        writer.writerow(header)
+        for i in range(len(temp_rgb)):
+            row = temp_rgb[i]
+
             temp = row[0]
             r = row[1][0]
             g = row[1][1]
             b = row[1][2]
-            writer.writerow([temp, r, g, b])
+
+            data = []
+            # Include voltage if necessary
+            if voltage_mode:
+                data.append(voltages[i])
+            # Include the temperature and color
+            data.extend([temp, r, g, b])
+
+            writer.writerow(data)
 
     # Make a plot
     #x_axis = [d[0] for d in temp_rgb]
@@ -183,4 +250,8 @@ if __name__ == '__main__':
     #plt.legend()
     #plt.gca().set_facecolor('black')
     #plt.show()
+
+
+if __name__ == '__main__':
+    main()
 
