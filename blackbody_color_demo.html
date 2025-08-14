@@ -5,8 +5,18 @@
         <title>Black-Body Color Demo</title>
     </head>
     <body>
-        <label for="temperature">Temperature (K)</label>
+        <label for="voltage-mode" id="voltage-mode-label">Voltage Mode</label>
+        <input type="checkbox" id="voltage-mode" />
+
+        <br>
+
+        <label for="temperature" id="temperature-label">Temperature: ? K</label>
         <input type="range" id="temperature" min="1000" max="10000" />
+
+        <label for="voltage" id="voltage-label" style="display: none">Voltage: ? V</label>
+        <input type="range" id="voltage" min="10" max="120" style="display: none"/>
+
+        <br>
 
         <div id="color">
             Temperature: ?
@@ -23,17 +33,59 @@
             return [r,g,b];
         }
 
-        function inputListener(e) {
-            var colorBox = document.getElementById("color");
+        function voltToRgb(volt) {
+            var r = -1.124950e-6 * volt + 1.000051785;
+            var g =  9.805890e-4 * volt + 0.901150721;
+            var b =  4.882494e-3 * volt + 0.443587386;
+            return [r,g,b];
+        }
+
+        function voltageModeListener(e) {
+            var tempDisplay = e.target.checked ? "none" : "";
+            document.getElementById("temperature-label").style.display = tempDisplay;
+            document.getElementById("temperature").style.display = tempDisplay;
+
+            var voltDisplay = e.target.checked ? "" : "none";
+            document.getElementById("voltage-label").style.display = voltDisplay;
+            document.getElementById("voltage").style.display = voltDisplay;
+        }
+
+        function temperatureListener(e) {
             var temp = e.target.value;
+            var tempLabel = document.getElementById("temperature-label");
+            tempLabel.innerText = `Temperature: ${temp} K`;
+
             var rgb = tempToRgb(temp);
-            colorBox.innerText = `Temperature: ${temp}\nRGB: ${rgb}`;
+            var colorBox = document.getElementById("color");
+            colorBox.innerText = `RGB: ${rgb}`;
+
+            for (var i = 0; i < rgb.length; i++) rgb[i] = 255.0 * rgb[i];
+            document.body.style.backgroundColor = `rgb(${rgb})`;
+        }
+
+        function voltageListener(e) {
+            var volt = e.target.value;
+            var voltLabel = document.getElementById("voltage-label");
+            voltLabel.innerText = `Voltage: ${volt} V`;
+
+            var rgb = voltToRgb(volt);
+            var colorBox = document.getElementById("color");
+            colorBox.innerText = `RGB: ${rgb}`;
+
             for (var i = 0; i < rgb.length; i++) rgb[i] = 255.0 * rgb[i];
             document.body.style.backgroundColor = `rgb(${rgb})`;
         }
 
         document
+            .getElementById("voltage-mode")
+            .addEventListener("input", voltageModeListener);
+
+        document
             .getElementById("temperature")
-            .addEventListener("input", inputListener);
+            .addEventListener("input", temperatureListener);
+
+        document
+            .getElementById("voltage")
+            .addEventListener("input", voltageListener);
     </script>
 </html>
