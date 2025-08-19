@@ -124,7 +124,8 @@ def get_rgb_from_temp(temperature, data):
     #print(f'\tRGB: {rgb}')
     #print(f'\tRGB Normalized: {rgb_normalized}')
 
-    return rgb_normalized
+    #return rgb_normalized
+    return rgb
 
 
 def main():
