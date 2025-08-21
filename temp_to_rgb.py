@@ -4,21 +4,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-# Compute the spectral radiance at a given wavelength (in meters) and
-# temperature (in Kelvin)
+# Compute the spectral radiance (W sr^-1 m^-3) at a given wavelength (in meters)
+# and temperature (in Kelvin)
 # See https://en.wikipedia.org/wiki/Planck's_law for more information.
 def planck(wavelength, temperature):
     # Planck Constant (J Hz^-1)
     h = 6.626_070_15e-34
     # Speed of Light (m s^-1)
     c = 2.997_924_58e8
-    # Boltzman Constant (J K)
+    # Boltzman Constant (J K^-1)
     k_b = 1.380_649e-23
 
-    frequency = c / wavelength
-
-    numerator = 2.0 * h * pow(frequency, 3)
-    denominator = c * c * math.expm1(h * frequency / (k_b * temperature))
+    numerator = 2.0 * h * c * c
+    denominator = pow(wavelength, 5) * math.expm1(h * c / (wavelength * k_b * temperature))
 
     return numerator / denominator
 
@@ -62,7 +60,7 @@ def voltage_to_temp(voltage):
 # See Sauer, T. (2018). *Numerical Analysis* (3rd ed.). Pearson. for more info.
 def simpson(values, subint_size):
     num_points = len(values)
-    # Check that are an even number of subintervals
+    # Check that there are an even number of subintervals
     if (num_points - 1) % 2 != 0:
         num_points -= 1
 
@@ -109,6 +107,9 @@ def get_rgb_from_temp(temperature, data):
     y = simpson(y_bar, subint_size)
     z = simpson(z_bar, subint_size)
     xyz = np.array([x, y, z])
+    # Multiply by maximum spectral luminous efficacy, as per CIE guidelines, to
+    # get luminance (lm sr^-1 m^-2 or cd m^-2)
+    xyz *= 683 # lm W^-1
 
     # I don't remember where I got this from: probably from Wikipedia.
     # Let's hope it works.
