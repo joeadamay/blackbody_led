@@ -62,8 +62,8 @@ def voltage_to_temp(voltage):
 # See Sauer, T. (2018). *Numerical Analysis* (3rd ed.). Pearson. for more info.
 def simpson(values, subint_size):
     num_points = len(values)
-    # Check that values has an even length
-    if num_points % 2 != 0:
+    # Check that are an even number of subintervals
+    if (num_points - 1) % 2 != 0:
         num_points -= 1
 
     num_panels = int(num_points / 2)
