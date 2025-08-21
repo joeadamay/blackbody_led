@@ -8,3 +8,5 @@ Sauer, T. (2018). *Numerical Analysis* (3rd ed.). Pearson.
 
 [Kykta, M. (2022). Incandescent lamp design and lifetime. *AIP Advances*, *12*(10), 105116. https://doi.org/10.1063/5.0101992](https://pubs.aip.org/aip/adv/article/12/10/105116/2819829/Incandescent-lamp-design-and-lifetime)
 
+[Carter, E. C., Ohno, Y., Pointer, M. R., Robertson, A. R., Sève, R., Schanda, J. D., Witt, K., et al. (2004). *Colorimetry* (Publication No. CIE 15:2004). International Commission on Illumination. ISBN 978 3 901906 33 6](https://archive.org/details/gov.law.cie.15.2004)
+

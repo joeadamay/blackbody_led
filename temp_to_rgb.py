@@ -67,17 +67,20 @@ def simpson(values, subint_size):
         num_points -= 1
 
     num_panels = int(num_points / 2)
+
     result = values[0] + values[2 * num_panels]
 
     sum_value = 0.0
     for i in range(1, num_panels + 1):
         sum_value += values[2 * i - 1]
-    result = 4.0 * sum_value
+    result += 4.0 * sum_value
 
     sum_value = 0.0
     for i in range(1, num_panels):
         sum_value += values[2 * i]
     result += 2.0 * sum_value
+
+    result *= subint_size / 3.0
 
     return result
 
@@ -116,9 +119,11 @@ def get_rgb_from_temp(temperature, data):
 
     # Convert from the CIE-XYZ color representation to RGB
     rgb = xyz_to_rgb @ xyz
+
     # Normalize the color to have maximal lightness (i.e. the vector is scaled
     # so that the greatest component becomes 1.0)
-    rgb_normalized = rgb / np.linalg.norm(rgb, np.inf)
+    #rgb_normalized = rgb / np.linalg.norm(rgb, np.inf)
+
     #print(f'Temperature: {temperature}')
     #print(f'\tXYZ: {xyz}')
     #print(f'\tRGB: {rgb}')
