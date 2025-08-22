@@ -6,7 +6,8 @@ import numpy as np
 
 # Compute the spectral radiance (W sr^-1 m^-3) at a given wavelength (in meters)
 # and temperature (in Kelvin)
-# See https://en.wikipedia.org/wiki/Planck's_law for more information.
+# For more information, see https://en.wikipedia.org/wiki/Planck's_law or the
+# [CIE Technical Report Colorimetry](https://archive.org/details/gov.law.cie.15.2004)
 def planck(wavelength, temperature):
     # Planck Constant (J Hz^-1)
     h = 6.626_070_15e-34
@@ -85,19 +86,20 @@ def simpson(values, subint_size):
 
 # `temperature` is in Kelvin
 # `data` is a list of lists describing the perceptive response of the visible
-#  spectrum: [wavelength (nm), CIE X, CIE Y, CIE Z]
-def get_rgb_from_temp(temperature, data):
-    # Get the black-body spectrum
-    blackbody = []
-    for datum in data:
-        wavelength = datum[0] * 1e-9 # Convert from nm to meters
-        radiance = planck(wavelength, temperature)
-        blackbody.append(radiance)
-
-    # Compute the product between XYZ colorspace and black-body radiation
-    x_bar = [data[i][1] * blackbody[i] for i in range(len(data))]
-    y_bar = [data[i][2] * blackbody[i] for i in range(len(data))]
-    z_bar = [data[i][3] * blackbody[i] for i in range(len(data))]
+#   spectrum: [wavelength (nm), CIE X, CIE Y, CIE Z]
+# Returns [xyz, rgb]
+def get_color_from_temp(temperature, data):
+    x_bar = []
+    y_bar = []
+    z_bar = []
+    for i in range(len(data)):
+        wavelength = data[i][0] * 1e-9 # Convert from nm to meters
+        # Get the blackbody spectral radiance
+        spectral_radiance = planck(wavelength, temperature)
+        # Multiply the XYZ color-matching functions by the spectral radiance
+        x_bar.append(data[i][1] * spectral_radiance)
+        y_bar.append(data[i][2] * spectral_radiance)
+        z_bar.append(data[i][3] * spectral_radiance)
 
     # Compute the integral across the region of spectrum represented by the data
     # points
@@ -107,15 +109,16 @@ def get_rgb_from_temp(temperature, data):
     y = simpson(y_bar, subint_size)
     z = simpson(z_bar, subint_size)
     xyz = np.array([x, y, z])
+
     # Multiply by maximum spectral luminous efficacy, as per CIE guidelines, to
-    # get luminance (lm sr^-1 m^-2 or cd m^-2)
+    # go from radiance (W sr^-1 m^-2) to luminance (lm sr^-1 m^-2 or cd m^-2)
     xyz *= 683 # lm W^-1
 
-    # I don't remember where I got this from: probably from Wikipedia.
-    # Let's hope it works.
-    xyz_to_rgb = np.array([[ 1.91020, -1.11212,  0.20191],
-                           [ 0.37095,  0.62905,  0.0    ],
-                           [ 0.0    ,  0.0    ,  1.0    ]])
+    # From CIE Colorimetry 3rd Edition (2004)
+    # https://archive.org/details/gov.law.cie.15.2004
+    xyz_to_rgb = np.array([[2.768_892, 1.751_748, 1.130_160],
+                           [1.000_000, 4.590_700, 0.060_100],
+                           [0.0      , 0.056_508, 5.594_292]])
     xyz_to_rgb = np.linalg.inv(xyz_to_rgb)
 
     # Convert from the CIE-XYZ color representation to RGB
@@ -131,7 +134,7 @@ def get_rgb_from_temp(temperature, data):
     #print(f'\tRGB Normalized: {rgb_normalized}')
 
     #return rgb_normalized
-    return rgb
+    return [xyz, rgb]
 
 
 def main():
@@ -194,14 +197,14 @@ def main():
 
     # Get Temperature-RGB relationship
     voltages = []
-    temp_rgb = []
+    temp_xyz_rgb = []
     cur_value = min_value
     while cur_value <= max_value:
         # Calculate the temperature if necessary
         temp = voltage_to_temp(cur_value) if voltage_mode else cur_value
 
-        rgb = get_rgb_from_temp(temp, data)
-        temp_rgb.append([temp, rgb])
+        [xyz, rgb] = get_color_from_temp(temp, data)
+        temp_xyz_rgb.append([temp, xyz, rgb])
 
         # Record the voltage if necessary
         if voltage_mode:
@@ -216,24 +219,23 @@ def main():
         header = []
         if voltage_mode:
             header.append('Voltage (V)')
-        header.extend(['Temperature (K)', 'Red', 'Green', 'Blue'])
+        header.extend(['Temperature (K)', 'X', 'Y', 'Z', 'Red', 'Green', 'Blue'])
 
         writer = csv.writer(out_f)
         writer.writerow(header)
-        for i in range(len(temp_rgb)):
-            row = temp_rgb[i]
+        for i in range(len(temp_xyz_rgb)):
+            row = temp_xyz_rgb[i]
 
             temp = row[0]
-            r = row[1][0]
-            g = row[1][1]
-            b = row[1][2]
+            [x, y, z] = row[1]
+            [r, g, b] = row[2]
 
             data = []
             # Include voltage if necessary
             if voltage_mode:
                 data.append(voltages[i])
             # Include the temperature and color
-            data.extend([temp, r, g, b])
+            data.extend([temp, x, y, z, r, g, b])
 
             writer.writerow(data)
 
