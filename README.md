@@ -14,8 +14,14 @@ voltages that the program uses when computing the colors.
 The program will then ask for a minimum and maximum temperature as well as a
 step size.  Please provide it with reasonable values (i.e. Positive values and a
 minimum that is less than the maximum).  Also, try to keep the minimum values
-somewhat high (i.e. a temperature above 273 K and a voltage above 10 V); the
-math tends to fail when the values are too small.
+somewhat high (i.e. temperature and voltage minima of 273 K and 5 V,
+respectively); the math tends to fail when the values are too small.
+
+Finally, the program will request a reference point, including the luminance and
+either voltage or temperature, depending upon the previously selected mode.  
+Example using the GE47 from Kykta, M. (2022):
+- Voltage: 6.3 V
+- Luminance: 3.15e5 lm sr^-1 m^-2
 
 ### Requirements
 

@@ -38,18 +38,20 @@ def voltage_to_temp(voltage):
     # Emissivity of tungsten (from Kykta, 2022)
     emissivity = 0.28
     # In meters
-    filament_length = 0.02814
+    #filament_length = 0.02814
+    filament_length = 0.023_14 # GE47 from Kykta, 2022
     # In meters
-    filament_radius = 11.5533e-6
+    #filament_radius = 11.5533e-6
+    filament_radius = 0.000_010_91 # GE47 from Kykta, 2022
 
-    a_1 = math.pow(2.0 * stef_boltz * emissivity * math.pow(2.96e8, 4), -0.25)
-    a_1 /= math.pi
+    b_1 = (2.0 * stef_boltz * emissivity * 2.96e8 ** 4) ** -0.232
+    b_1 /= math.pi
 
-    a_2 = math.pow(2.0 * math.pi * stef_boltz * emissivity * a_1, -0.25)
+    b_2 = (2.0 * math.pi * stef_boltz * emissivity * b_1) ** -0.25
 
-    B_2 = a_2 * math.pow(filament_length, -0.384) * math.pow(filament_radius, 0.192)
+    B_2 = b_2 * filament_length ** -0.384 * filament_radius ** 0.192
 
-    temperature = B_2 * math.pow(voltage, 0.384)
+    temperature = B_2 * voltage ** 0.384
 
     return temperature
 
@@ -87,8 +89,8 @@ def simpson(values, subint_size):
 # `temperature` is in Kelvin
 # `data` is a list of lists describing the perceptive response of the visible
 #   spectrum: [wavelength (nm), CIE X, CIE Y, CIE Z]
-# Returns [xyz, rgb]
-def get_color_from_temp(temperature, data):
+# Returns xyz
+def get_xyz_from_temp(temperature, data):
     x_bar = []
     y_bar = []
     z_bar = []
@@ -114,6 +116,11 @@ def get_color_from_temp(temperature, data):
     # go from radiance (W sr^-1 m^-2) to luminance (lm sr^-1 m^-2 or cd m^-2)
     xyz *= 683 # lm W^-1
 
+    return xyz
+
+
+# `xyz` is a numpy array
+def xyz_to_rgb(xyz):
     # From CIE Colorimetry 3rd Edition (2004)
     # https://archive.org/details/gov.law.cie.15.2004
     xyz_to_rgb = np.array([[2.768_892, 1.751_748, 1.130_160],
@@ -124,17 +131,7 @@ def get_color_from_temp(temperature, data):
     # Convert from the CIE-XYZ color representation to RGB
     rgb = xyz_to_rgb @ xyz
 
-    # Normalize the color to have maximal lightness (i.e. the vector is scaled
-    # so that the greatest component becomes 1.0)
-    #rgb_normalized = rgb / np.linalg.norm(rgb, np.inf)
-
-    #print(f'Temperature: {temperature}')
-    #print(f'\tXYZ: {xyz}')
-    #print(f'\tRGB: {rgb}')
-    #print(f'\tRGB Normalized: {rgb_normalized}')
-
-    #return rgb_normalized
-    return [xyz, rgb]
+    return rgb
 
 
 def main():
@@ -155,14 +152,18 @@ def main():
 
     try:
         value_text = 'voltage (V)' if voltage_mode else 'temperature (K)'
-        min_value =  float(input(f'Minimum {value_text}: '))
-        max_value =  float(input(f'Maximum {value_text}: '))
-        step_size = float(input('Step size: '))
+        min_value           =  float(input(f'Minimum {value_text}: '))
+        max_value           =  float(input(f'Maximum {value_text}: '))
+        step_size           = float(input('Step size: '))
+        reference_x         = float(input(f'Reference {value_text}: '))
+        reference_luminance = float(input(f'Reference Luminance (lm sr^-1 m^-2): '))
 
         assert(min_value > 0)
         assert(max_value > 0)
         assert(step_size > 0)
         assert(max_value > min_value)
+        assert(reference_x > 0)
+        assert(reference_luminance > 0)
     except:
         print("\nPlease provide decimal numbers with reasonable values,")
         print("i.e. positive and a minimum that is less than the maximum.\n")
@@ -195,6 +196,12 @@ def main():
     # Close the file
     in_f.close()
 
+    # Calculate the ratio between the true luminance and the calculated
+    # luminance at the reference point (The Y of XYZ is luminance)
+    ref_temp = voltage_to_temp(reference_x) if voltage_mode else reference_x
+    ref_xyz = get_xyz_from_temp(ref_temp, data)
+    calibration_coefficient = reference_luminance / ref_xyz[1]
+
     # Get Temperature-RGB relationship
     voltages = []
     temp_xyz_rgb = []
@@ -203,7 +210,9 @@ def main():
         # Calculate the temperature if necessary
         temp = voltage_to_temp(cur_value) if voltage_mode else cur_value
 
-        [xyz, rgb] = get_color_from_temp(temp, data)
+        xyz = get_xyz_from_temp(temp, data)
+        xyz *= calibration_coefficient
+        rgb = xyz_to_rgb(xyz)
         temp_xyz_rgb.append([temp, xyz, rgb])
 
         # Record the voltage if necessary
@@ -221,7 +230,18 @@ def main():
             header.append('Voltage (V)')
         header.extend(['Temperature (K)', 'X', 'Y', 'Z', 'Red', 'Green', 'Blue'])
 
+        # Add the reference point
+        reference_csv = []
+        if voltage_mode:
+            reference_csv.append('Reference Voltage (V):')
+        else:
+            reference_csv.append('Reference Temperature (K):')
+        reference_csv.append(reference_x)
+        reference_csv.append('Reference Luminance (lm sr^-1 m^-2):')
+        reference_csv.append(reference_luminance)
+
         writer = csv.writer(out_f)
+        writer.writerow(reference_csv)
         writer.writerow(header)
         for i in range(len(temp_xyz_rgb)):
             row = temp_xyz_rgb[i]
@@ -236,7 +256,6 @@ def main():
                 data.append(voltages[i])
             # Include the temperature and color
             data.extend([temp, x, y, z, r, g, b])
-
             writer.writerow(data)
 
     # Make a plot
