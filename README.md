@@ -43,7 +43,7 @@ The output file is is a table in CSV format comparing absolute temperature
 to the corresponding RGB color (and includes voltages if Voltage Mode was
 selected).
 
-## `blackbody_color_demo.html`
+## `blackbody_color_demo.html` (Outdated)
 
 This program uses a linear approximation to display the colors of the black-body
 spectrum.  To run, open the file in a browser (e.g. Chrome, Firefox, or Safari).
